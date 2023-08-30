@@ -25,7 +25,7 @@ The CDK and CloudFormation will provision an IAM user with the credentials neces
 
 ## How to Run
 
-1. First, deploy the AWS infrastructure by running `cd source && cd backend && cdk deploy`
+1. First, deploy the AWS infrastructure by running `cd backend && cdk deploy`
 2. Next, start the authenticating proxy with `./run-proxy.sh`
 3. In another terminal session, run `npm run start-with-proxy`
 4. When finished, you can clean up AWS resources by running `cd backend && cdk destroy`
@@ -42,12 +42,3 @@ Note that this sample project will incur costs in your AWS account, including:
 - Amazon Bedrock usage
 
 All resources provisioned by the solution can be deleted from your account by running `cdk destroy` with the exception of CloudWatch logs. Logs can be found by searching CloudWatch log groups for the CDK stack name (`LambdaStack` by default) and deleting the groups.
-
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
-
