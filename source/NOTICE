@@ -1,0 +1,9 @@
+This project includes the following third-party software/licensing:
+
+** aws-amplify - https://github.com/aws-amplify/amplify-js | Apache-2.0
+
+** react - https://github.com/facebook/react | MIT
+
+** react-router - https://github.com/remix-run/react-router | MIT
+
+** web-vitals - https://github.com/GoogleChrome/web-vitals | Apache-2.0
