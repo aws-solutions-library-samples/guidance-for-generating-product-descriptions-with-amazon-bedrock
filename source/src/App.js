@@ -39,38 +39,42 @@ const App = (props) => {
         setIsBuffering(true)
         fileToB64(event.target.files[0])
             .then((b64) => fetch("/api/call-rekognition-api", {
-                method: "POST",
+            method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({'image': b64}),
-            })
+        })
             )
             .then((response) => response.json())
             .then((data) => {
                 setImageResponse(URL.createObjectURL(event.target.files[0]));
                 const output = data.labels.join(" ");
                 setInputText(`Build me a product Description for ${output}`);
-
-                fetch("/api/conversation/predict-titan", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+                let payload = {
+                    modelId: 'anthropic.claude-instant-v1',
+                    contentType: 'application/json',
+                    accept: '*/*',
                     body: JSON.stringify({
-                        inputText: `Build me a product Description for ${output}`,
-                        textGenerationConfig: {
-                            maxTokenCount: 100,
-                            stopSequences: [],
-                            temperature: 0,
-                            topP: 1,
-                        }
+                        prompt: `Build me a product Description for ${output}. Here is additional information about the product photograph ${output}`,
+                        max_tokens_to_sample: 300,
+                        temperature: 0.5,
+                        top_k: 250,
+                        top_p: 1,
+                        stop_sequences: ['\n\nHuman:']
                     }),
+                };
+                fetch('/api/conversation/predict-claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 })
                     .then((response) => response.json())
                     .then((data) => {
-                        setResponseText(data.output_text)
-                        handleTranslations(data.output_text)
+                        setResponseText(data)
+                        handleTranslations(data)
                     }
                     )
                     .catch((error) => console.error("Error:", error))
@@ -117,26 +121,30 @@ const App = (props) => {
             .then((data) => {
                 const output = data.labels.join(" ");
                 setInputText(`Build me a product Description for ${output}`);
-
-                fetch("/api/conversation/predict-titan", {
+                let payload = {
+                    modelId: 'anthropic.claude-instant-v1',
+                    contentType: 'application/json',
+                    accept: '*/*',
+                    body: JSON.stringify({
+                        prompt: `Build me a product Description for ${output}. Here is additional information about the product photograph ${output}`,
+                        max_tokens_to_sample: 300,
+                        temperature: 0.5,
+                        top_k: 250,
+                        top_p: 1,
+                        stop_sequences: ['\n\nHuman:']
+                    }),
+                };
+                fetch("/api/conversation/predict-claude", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                        inputText: `Build me a product Description for ${userInputPrompt}. Here is additional information about the product photograph ${output}`,
-                        textGenerationConfig: {
-                            maxTokenCount: 200,
-                            stopSequences: [],
-                            temperature: 0,
-                            topP: 1,
-                        }
-                    }),
+                    body: JSON.stringify(payload),
                 })
                     .then((response) => response.json())
                     .then((data) => {
-                        setResponseText(data.output_text)
-                        handleTranslations(data.output_text)
+                        setResponseText(data)
+                        handleTranslations(data)
                     })
                     .catch((error) => console.error("Error:", error))
                     .finally(
@@ -220,7 +228,7 @@ const App = (props) => {
                 top_k: 250,
                 top_p: 1,
                 stop_sequences: ['\n\nHuman:']
-            })
+            }),
         };
 
         // setUserInput('');

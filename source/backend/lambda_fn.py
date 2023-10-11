@@ -1,5 +1,4 @@
 import base64
-import io
 import json
 
 import boto3
@@ -12,28 +11,8 @@ MODEL_STABLE_DIFFUSION = 'stability.stable-diffusion-xl'
 
 
 def invoke_bedrock(**kwargs):
-    '''
-    During preview, provide a fallback to invoke Bedrock even with GA boto
-    '''
-    from botocore.exceptions import UnknownServiceError
-    try:
-        bedrock = boto3.client('bedrock')
-        return bedrock.invoke_model(**kwargs)
-    except UnknownServiceError:
-        from botocore.auth import SigV4Auth
-        from botocore.awsrequest import AWSRequest
-        import requests
-        session = boto3.Session()
-        region = session.region_name
-        credentials = session.get_credentials()
-        creds = credentials.get_frozen_credentials()
-        headers = {'Accept': kwargs['accept'],
-                    'Content-Type': kwargs['contentType']}
-        invoke_url = f'https://bedrock.{region}.amazonaws.com/model/{kwargs["modelId"]}/invoke'
-        request = AWSRequest(method='POST', url=invoke_url, data=kwargs['body'], headers=headers)
-        SigV4Auth(creds, 'bedrock', region).add_auth(request)
-        resp = requests.request(method='POST', url=invoke_url, data=kwargs['body'], headers=dict(request.headers))
-        return {'body': io.BytesIO(resp.content)}
+    bedrock = boto3.client('bedrock-runtime')
+    return bedrock.invoke_model(**kwargs)
 
 
 def call_rekognition_api(payload):
@@ -92,13 +71,18 @@ def call_stable_diffusion(payload):
 
 
 def predict_claude(payload):
+    body = json.loads(payload['body'])
+    prompt = '\n\nHuman: '+ body['prompt'] + ' \n\nAssistant:'
+    body['prompt'] = prompt
+    
     response = invoke_bedrock(
-        body=payload['body'],
+        body=json.dumps(body),
         modelId=MODEL_CLAUDE,
         accept='application/json',
         contentType='application/json'
     )
     response_body = json.loads(response.get('body').read())
+    print(response_body)
     return response_body['completion']
 
 

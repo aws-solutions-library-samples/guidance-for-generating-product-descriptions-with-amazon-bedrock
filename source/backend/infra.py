@@ -1,4 +1,5 @@
 from aws_cdk import (
+    BundlingOptions,
     Duration,
     CfnOutput,
     Stack,
@@ -38,8 +39,13 @@ class LambdaStack(Stack):
         lambda_role = iam.Role(self, "fn-role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
                         inline_policies={"fn-policy": fn_policy_doc})
         fn = cdk_lambda.Function(self, "Function",
-            code=cdk_lambda.Code.from_asset(f"{__file__}/..", exclude=["cdk.out"]),
-            runtime=cdk_lambda.Runtime.PYTHON_3_7,
+            code=cdk_lambda.Code.from_asset(f"{__file__}/..", exclude=["cdk.out"],
+                bundling=BundlingOptions(
+                    image=cdk_lambda.Runtime.PYTHON_3_11.bundling_image,
+                    command=["bash", "-c", "pip install -r requirements.txt -t /asset-output && cp lambda_fn.py /asset-output"],
+                )
+            ),
+            runtime=cdk_lambda.Runtime.PYTHON_3_11,
             handler="lambda_fn.handler",
             architecture=cdk_lambda.Architecture.X86_64,
             timeout=Duration.seconds(60),
@@ -51,6 +57,7 @@ class LambdaStack(Stack):
         api = apigw.LambdaRestApi(self, "api",
             handler=fn,
             default_method_options=opts,
+            cloud_watch_role=True,
             deploy_options=apigw.StageOptions(access_log_destination=apigw.LogGroupLogDestination(log_group))
         )
         CfnOutput(scope=self, id="ApiUrl", value=api.url)

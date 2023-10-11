@@ -10,6 +10,7 @@ For the Lambda backend, you'll need to have:
 1. [Python 3.8 or higher](https://www.python.org/downloads/macos/)
 2. Install the AWS CDK Toolkit (the `cdk` command) as documented [here](https://docs.aws.amazon.com/cdk/v2/guide/cli.html). You will also need to run `cdk bootstrap` if you haven't used the CDK before in your account as discussed [here](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
 3. The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+4. [Docker](https://www.docker.com/) is required to allow the CDK to package the Lambda code together with the necessary Python dependencies
 
 For the React frontend, you'll need to install the following:
 1. [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
@@ -18,6 +19,12 @@ For the React frontend, you'll need to install the following:
 Finally, in order to allow the frontend to authenticate to the backend:
 1. You will need [Docker](https://www.docker.com/) to run the [aws-sigv4-proxy](https://github.com/awslabs/aws-sigv4-proxy/tree/master).
 2. You will need to export AWS API authentication information via environment variables as documented [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) (other authentication methods will not be passed to the proxy)
+
+**NOTE:** Docker must be installed and _running_. You can ensure that the Docker daemon is running by ensuring that a command like `docker ps` runs without error. If no containers are running, then `docker ps` should return an empty list of containers like this:
+
+```
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+```
 
 ## IAM Permission
 
