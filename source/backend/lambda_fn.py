@@ -4,7 +4,7 @@ import json
 import boto3
 
 
-MODEL_CLAUDE = 'anthropic.claude-v2'
+MODEL_CLAUDE = 'anthropic.claude-instant-v1'
 MODEL_TITAN = 'amazon.titan-tg1-large'
 MODEL_AI21 = 'ai21.j2-grande-instruct'
 MODEL_STABLE_DIFFUSION = 'stability.stable-diffusion-xl'
