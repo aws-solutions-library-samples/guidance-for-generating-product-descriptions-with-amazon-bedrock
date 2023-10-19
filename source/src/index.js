@@ -7,7 +7,29 @@ import './index.css';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Routing } from './routing';
+import { Amplify } from 'aws-amplify';
+import { AWS_REGION } from './config';
+import { USER_POOL_ID } from './config';
+import { USER_POOL_WEB_CLIENT_ID } from './config';
 
+
+Amplify.configure({
+    Auth: {
+        region: AWS_REGION,
+        userPoolId: USER_POOL_ID,
+        userPoolWebClientId: USER_POOL_WEB_CLIENT_ID
+    }
+})
+
+// Auth.signIn(username, password)
+//   .then(user => {
+//     // You can call currentSession here to retrieve the user's session.
+//     const session = Auth.currentSession();
+//     console.log(session);
+//   })
+//   .catch(error => {
+//     console.log(error);
+//   });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

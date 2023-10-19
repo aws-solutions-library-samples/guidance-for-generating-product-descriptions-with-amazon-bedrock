@@ -4,8 +4,10 @@
 import './App.css';
 import '@aws-amplify/ui-react/styles.css';
 import React, { useState, useEffect } from 'react';
-import bedrockImage from './bedrock.png'
+import { Button, withAuthenticator } from '@aws-amplify/ui-react';
+import { Amplify, Auth } from 'aws-amplify';
 
+import { API_GATEWAY_URL } from './config';
 
 const fileToB64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -15,7 +17,7 @@ const fileToB64 = file => new Promise((resolve, reject) => {
 });
 
 
-const App = (props) => {
+function App({ signOut, user }) {
     const [modelSelected, setModelSelected] = useState('Anthropic: Claude');
     const [inputText, setInputText] = useState("");
     const [responseText, setResponseText] = useState("");
@@ -31,32 +33,54 @@ const App = (props) => {
     const [imageBlob, setImageBlob] = useState('');
     const [userInputEnhance, setUserInputEnhance] = useState('');
     const [enhanceResponse, setEnhanceResponse] = useState('');
+    const [authData, setAuthData] = useState({})
 
+    async function getSession() {
+        try {
+          const getAuth = await Auth.currentSession();
+          console.log(getAuth);
+          console.log(getAuth.idToken.jwtToken)
+            setAuthData(getAuth.idToken.jwtToken)
+        } catch (error) {
+          console.log(error);
+        }
+      }
+      
+      
 
+    useEffect(() => {
+        getSession();
+        
+    }, [])
 
     const handleImageFormSubmit = (event) => {
         event.preventDefault();
         setIsBuffering(true)
         fileToB64(event.target.files[0])
-            .then((b64) => fetch("/api/call-rekognition-api", {
+            .then((b64) => fetch(API_GATEWAY_URL +"/bedrock", { 
+                // /call-rekognition-api
             method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${authData}`
                 },
-                body: JSON.stringify({'image': b64}),
+                body: JSON.stringify({'image': b64, 'endpoint': '/api/call-rekognition-api'}),
         })
             )
             .then((response) => response.json())
             .then((data) => {
+                console.log(JSON.parse(data.body).labels)
+                // console.log(data.labels)
                 setImageResponse(URL.createObjectURL(event.target.files[0]));
-                const output = data.labels.join(" ");
+                const output = JSON.parse(data.body).labels.join(" ");
                 setInputText(`Build me a product Description for ${output}`);
                 let payload = {
                     modelId: 'anthropic.claude-instant-v1',
                     contentType: 'application/json',
                     accept: '*/*',
+                    endpoint: '/api/conversation/predict-claude',
                     body: JSON.stringify({
-                        prompt: `Build me a product Description for ${output}. Here is additional information about the product photograph ${output}`,
+                        prompt: `Build me a product Description using 120 words or less. Here is additional information about the product photograph ${output}`,
                         max_tokens_to_sample: 300,
                         temperature: 0.5,
                         top_k: 250,
@@ -64,17 +88,19 @@ const App = (props) => {
                         stop_sequences: ['\n\nHuman:']
                     }),
                 };
-                fetch('/api/conversation/predict-claude', {
+                fetch(API_GATEWAY_URL + '/bedrock', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        "Authorization": `Bearer ${authData}`
                     },
                     body: JSON.stringify(payload)
                 })
                     .then((response) => response.json())
                     .then((data) => {
-                        setResponseText(data)
-                        handleTranslations(data)
+                        
+                        setResponseText(JSON.parse(data.body))
+                        handleTranslations(JSON.parse(data.body))
                     }
                     )
                     .catch((error) => console.error("Error:", error))
@@ -110,23 +136,25 @@ const App = (props) => {
     const handleImageFormSubmitPrompt = (blob) => {
         setIsBuffering(true)
         setLanguageResponse("")
-        fetch("/api/call-rekognition-api", {
+        fetch(API_GATEWAY_URL + '/bedrock', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${authData}`
             },
-            body: JSON.stringify({'image': blob}),
+            body: JSON.stringify({'image': blob, 'endpoint': "/api/call-rekognition-api"}),
         })
             .then((response) => response.json())
             .then((data) => {
-                const output = data.labels.join(" ");
+                const output = JSON.parse(data.body).labels.join(" ");
                 setInputText(`Build me a product Description for ${output}`);
                 let payload = {
                     modelId: 'anthropic.claude-instant-v1',
                     contentType: 'application/json',
+                    endpoint: '/api/conversation/predict-claude',
                     accept: '*/*',
                     body: JSON.stringify({
-                        prompt: `Build me a product Description for ${output}. Here is additional information about the product photograph ${output}`,
+                        prompt: `Build me a product Description using 120 words or less. Here is additional information about the product photograph ${output}`,
                         max_tokens_to_sample: 300,
                         temperature: 0.5,
                         top_k: 250,
@@ -134,23 +162,22 @@ const App = (props) => {
                         stop_sequences: ['\n\nHuman:']
                     }),
                 };
-                fetch("/api/conversation/predict-claude", {
+                fetch(API_GATEWAY_URL + '/bedrock', {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authData}`
                     },
                     body: JSON.stringify(payload),
                 })
                     .then((response) => response.json())
                     .then((data) => {
-                        setResponseText(data)
-                        handleTranslations(data)
+                        setResponseText(JSON.parse(data.body))
+                        handleTranslations(JSON.parse(data.body))
                     })
                     .catch((error) => console.error("Error:", error))
                     .finally(
-                        setTimeout(function () {
-                            setIsBuffering(false)
-                        }, 1000)
+                        setIsBuffering(false)
                     )
             })
             .catch((error) => console.error("Error:", error))
@@ -175,6 +202,7 @@ const App = (props) => {
             "modelId": "stability.stable-diffusion-xl",
             "contentType": "application/json",
             "accept": "application/json",
+            'endpoint': "/api/call-stablediffusion",
             "body": JSON.stringify({
                 "text_prompts": [
                     { "text": userInputPrompt }
@@ -185,17 +213,18 @@ const App = (props) => {
             })
         };
 
-        fetch("/api/call-stablediffusion", {
+        fetch(API_GATEWAY_URL+'/bedrock', {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authData}`
             },
             body: JSON.stringify(payload)
         })
             .then(response => response.json())
             .then(data => {
-                if (data.result === "success" && data.artifacts.length > 0) {
-                    const base64Data = data.artifacts[0].base64;
+                if (JSON.parse(data.body).result === "success" && JSON.parse(data.body).artifacts.length > 0) {
+                    const base64Data = JSON.parse(data.body).artifacts[0].base64;
                     const imageUrl = "data:image/jpeg;base64," + base64Data;
                     setImageResponseImg(<img src={imageUrl} alt="Generated Image" />);
 
@@ -220,6 +249,7 @@ const App = (props) => {
         let payload = {
             modelId: 'anthropic.claude-instant-v1',
             contentType: 'application/json',
+            endpoint: '/api/conversation/predict-claude',
             accept: '*/*',
             body: JSON.stringify({
                 prompt: `I will be listing a product on my eCommerce Marketplace. Make the following product description better: ${userInputEnhance}`,
@@ -232,16 +262,17 @@ const App = (props) => {
         };
 
         // setUserInput('');
-        fetch('/api/conversation/predict-claude', {
+        fetch(API_GATEWAY_URL +'/bedrock', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                "Authorization": `Bearer ${authData}`
             },
             body: JSON.stringify(payload)
         })
             .then(response => response.json())
             .then(response => {
-                setEnhanceResponse(response)
+                setEnhanceResponse(JSON.parse(response.body))
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -277,10 +308,11 @@ const App = (props) => {
 
         for (let i = 0; i < languages.length; i++) {
             payload.prompt = `Translate this to ${languages[i]}: ${description}`;
-            newQueue.push(callai21(languages[i], payload));
+            
+            callai21(languages[i], payload)
         }
 
-        setTranslationQueue((prevQueue) => [...prevQueue, ...newQueue]);
+        // setTranslationQueue((prevQueue) => [...prevQueue, ...newQueue]);
         processTranslationQueue();
     };
 
@@ -305,35 +337,48 @@ const App = (props) => {
         }
     };
 
-    const callai21 = (language, payload) => {
-        setIsBufferingLanguage(true)
-        fetch('/api/conversation/predict-ai21', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-            .then(response => response.json())
-            .then(response => {
-
-                const botResponse = response.output_text;
-                console.log(language)
-                console.log(botResponse)
-
-                setLanguageResponse(prevLanguageResponse => [
-                    ...prevLanguageResponse,
-                    {
-                        'Language': language,
-                        'Description': botResponse
-                    }
-                ]);
-            })
-            .catch(error => {
-                console.error('Error:', error);
+    const callai21 = async (language, payload) => {
+        // setIsBufferingLanguage(true);
+        console.log('payload in callai21 start:');
+        console.log(payload);
+        payload['endpoint'] = '/api/conversation/predict-ai21'
+        console.log('payload in callai21 end');
+        console.log('');
+    
+        try {
+            const response = await fetch(API_GATEWAY_URL+'/bedrock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    "Authorization": `Bearer ${authData}`
+                },
+                body: JSON.stringify(payload)
             });
-        setIsBufferingLanguage(false)
-    }
+    
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+    
+            const responseData = await response.json();
+            const botResponse = JSON.parse(responseData.body).output_text;
+            console.log(language);
+            console.log(botResponse);
+    
+            setLanguageResponse(prevLanguageResponse => [
+                ...prevLanguageResponse,
+                {
+                    'Language': language,
+                    'Description': botResponse
+                }
+            ]);
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            setIsBufferingLanguage(false);
+            setIsBuffering(false)
+        }
+    };
+
 
     const getSelectedDescription = () => {
         for (let i = 0; i < languageResponse.length; i++) {
@@ -355,15 +400,10 @@ const App = (props) => {
     }
 
     return (
-        <div className="App">
-            <div className="airwolf-header2">
-                <img className="BedrockImage" src={bedrockImage} alt="Bedrock" />
-                <div className="OtherModels">
-                </div>
-            </div>
+        
             <div id="ContentSection">
                 <div className="Contents">
-                    <h1>Building Product Descriptions with Bedrock</h1>
+                    <h1>Building Product Descriptions with Amazon Bedrock</h1>
                     <div className="Demos">
                         <div className="DemoOptions">
                             <span className={demoSelected == 'Image' ? "active" : "inactive"}
@@ -372,7 +412,7 @@ const App = (props) => {
                             </span>
                             <span className={demoSelected == 'Prompt' ? "active" : "inactive"}
                                 onClick={() => handleDemoSelection('Prompt')}>
-                                Create Image and Product Description from Text
+                                Create Image and Description from Text
                             </span>
                             <span className={demoSelected == 'Enhance' ? "active" : "inactive"}
                                 onClick={() => handleDemoSelection('Enhance')}>
@@ -460,7 +500,7 @@ const App = (props) => {
                                     ))}
                                 </div>
                                 
-                                <span className="ProductDesc">Product Description:</span>
+                                <span className="ProductDesc" style={{ display: languageResponse !== "" ? 'initial':'none'}} >Product Description:</span>
                                 
                                 <div className="ProductDescription">
                                 
@@ -476,9 +516,7 @@ const App = (props) => {
                             </div>
                 </div>
             </div>
-        </div>
     );
 }
 
-// export default withAuthenticator(App);
 export default App;

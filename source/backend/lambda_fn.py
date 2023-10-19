@@ -43,7 +43,9 @@ def predict_titan(payload):
 
 
 def predict_ai21(payload):
+    del payload['endpoint']
     request_body = json.dumps(payload)
+    
     response = invoke_bedrock(
         body=request_body,
         modelId=MODEL_AI21, 
@@ -94,8 +96,10 @@ def handler(event, context):
         ('/api/conversation/predict-ai21', 'POST'): predict_ai21,
         ('/api/call-stablediffusion', 'POST'): call_stable_diffusion
     }
-    payload = json.loads(event['body'])
-    result = path_method_fn[(event['path'], event['httpMethod'])](payload)
+    print(event)
+    payload = event
+    print(payload)
+    result = path_method_fn[(event['endpoint'], 'POST')](payload)
     return {
         'statusCode': 200,
         'body': json.dumps(result)

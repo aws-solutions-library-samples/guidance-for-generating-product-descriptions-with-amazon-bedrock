@@ -11,6 +11,7 @@ For the Lambda backend, you'll need to have:
 2. Install the AWS CDK Toolkit (the `cdk` command) as documented [here](https://docs.aws.amazon.com/cdk/v2/guide/cli.html). You will also need to run `cdk bootstrap` if you haven't used the CDK before in your account as discussed [here](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
 3. The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 4. [Docker](https://www.docker.com/) is required to allow the CDK to package the Lambda code together with the necessary Python dependencies
+5. If you get a cdk nag error run this `pip3 install cdk-nag`
 
 For the React frontend, you'll need to install the following:
 1. [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
@@ -33,9 +34,30 @@ The CDK and CloudFormation will provision an IAM user with the credentials neces
 ## How to Run
 
 1. First, deploy the AWS infrastructure by running `cd backend && cdk deploy`
-2. Next, start the authenticating proxy with `./run-proxy.sh`
-3. In another terminal session, run `npm run start-with-proxy`
-4. When finished, you can clean up AWS resources by running `cd backend && cdk destroy`
+2. Next, register to the Cognito User Pool. The user-pool-id will have outputted from the CDK execution. Modify the following code snippet to use the user_pool_id and your email.
+
+```
+aws cognito-idp admin-create-user \
+    --user-pool-id <<user_pool_uid>> \
+    --username <<email_address>> \
+    --user-attributes Name="email",Value="<<email_address>>" Name="family_name",Value="Foobar" \
+    --region us-west-2
+```
+
+3. You'll receive a temporary password in your email shortly. You'll need to use that to sign into the application for the first time, after which you'll be asked to change your password.
+ 
+4. Configure the front end application with the outputs from the CDK execution. In `./src/config.js`, replace each value with those printed as outputs from CDK.
+   
+```
+Fill these out using exports from CDK exeuction
+export const AWS_REGION = ''
+export const USER_POOL_ID = ''
+export const USER_POOL_WEB_CLIENT_ID = ''
+export const API_GATEWAY_URL = ''
+```
+
+5. In another terminal session, run `npm start`
+6. When finished, you can clean up AWS resources by running `cd backend && cdk destroy`
 
 ## Costs for running the sample code
 
