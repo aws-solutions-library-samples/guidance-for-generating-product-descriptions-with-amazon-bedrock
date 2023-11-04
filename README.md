@@ -73,16 +73,46 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 
 ## Deployment Steps
 
-1. Clone the repo: `git clone https://github.com/aws-solutions-library-samples/guidance-for-generating-product-descriptions-with-bedrock.git`
-2. cd to the repo folder: `cd guidance-for-generating-product-descriptions-with-bedrock`
-3. (Optional) create a new Python virtualenv for project-specific dependencies: `python -m venv .env && source .env/bin/activate`
-3. Install CDK dependencies: `pip install -r source/backend/requirements.txt`
-4. Deploy the backend: `cd source/backend && cdk deploy`
-5. cd back to the project root: `cd ../..`
-6. Create an initial Cognito user: `deployment/create-user.sh <<your email address>>`
-7. Update `config.js` with the appropriate values from CDK stack outputs. This can be done automatically by running `deployment/update-config.sh`
-8. Install frontend dependencies: `cd ../frontend && npm install`
-9. Run the sample client app: `npm start`
+1. Clone the repo:
+   ```
+   git clone https://github.com/aws-solutions-library-samples/guidance-for-generating-product-descriptions-with-bedrock.git
+   ```
+3. cd to the repo folder:
+   ```
+   cd guidance-for-generating-product-descriptions-with-bedrock
+   ```
+5. (Optional) create a new Python virtualenv for project-specific dependencies:
+   ```
+   python -m venv .env && source .env/bin/activate
+   ```
+3. Install CDK dependencies:
+   ```
+   pip install -r deployment/requirements.txt
+   ```
+5. Deploy the backend:
+   ```
+   cd deployment && cdk deploy
+   ```
+7. cd back to the project root:
+   ```
+   cd ..
+   ```
+9. Create an initial Cognito user:
+   ```
+   deployment/create-user.sh <<your email address>>
+   ```
+10. Update `config.js` with the appropriate values from CDK stack outputs. This can be done automatically by running
+    ```
+    deployment/update-config.sh
+    ```
+12. Install frontend dependencies:
+    ```
+    cd source/frontend && npm install
+    ```
+14. Run the sample client app:
+    ```
+    npm start
+    ```
 
 ## Deployment Validation
 
