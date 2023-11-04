@@ -84,7 +84,6 @@ def predict_claude(payload):
         contentType='application/json'
     )
     response_body = json.loads(response.get('body').read())
-    print(response_body)
     return response_body['completion']
 
 
@@ -96,10 +95,7 @@ def handler(event, context):
         ('/api/conversation/predict-ai21', 'POST'): predict_ai21,
         ('/api/call-stablediffusion', 'POST'): call_stable_diffusion
     }
-    print(event)
-    payload = event
-    print(payload)
-    result = path_method_fn[(event['endpoint'], 'POST')](payload)
+    result = path_method_fn[(event['endpoint'], 'POST')](event)
     return {
         'statusCode': 200,
         'body': json.dumps(result)

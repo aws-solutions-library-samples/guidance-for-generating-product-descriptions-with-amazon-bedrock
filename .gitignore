@@ -25,3 +25,7 @@ cdk.out
 **/data/**.csv
 
 .env
+
+# Python
+__pycache__/
+*.py[cod]

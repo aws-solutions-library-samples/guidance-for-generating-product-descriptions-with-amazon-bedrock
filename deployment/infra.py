@@ -11,7 +11,6 @@ from aws_cdk import (
     Aspects
 )
 from constructs import Construct
-import aws_cdk as _cdk_core
 import cdk_nag
 
 
@@ -36,21 +35,21 @@ class LambdaStack(Stack):
         ## api pool client for registration
         api_pool_client = api_userpool.add_client("app-client")
 
-        ## authentication authorizor for apiGW
+        ## authentication authorizer for apiGW
         api_auth = _apigw.CognitoUserPoolsAuthorizer(
-            self, 'api_authorizor',
+            self, 'api_authorizer',
             cognito_user_pools=[api_userpool]
         )
 
-        ## output the ARN of our cognito client_id for user sign up
-        _cdk_core.CfnOutput(
-            self, 'cognito_userpool_client_id',
+        ## output user pool ID for user sign up
+        CfnOutput(
+            self, 'CognitoUserPoolId',
             value=api_userpool.user_pool_id
         )
 
-        ## output the ARN of our cognito client_id for user sign up
-        _cdk_core.CfnOutput(
-            self, 'cognito_app_client_id',
+        ## output client ID for user sign up
+        CfnOutput(
+            self, 'CognitoClientId',
             value=api_pool_client.user_pool_client_id
         )
 
@@ -81,10 +80,10 @@ class LambdaStack(Stack):
         
         # Lambda
         fn = _lambda.Function(self, "Function",
-            code=_lambda.Code.from_asset(f"{__file__}/..", exclude=["cdk.out"],
+            code=_lambda.Code.from_asset(f"{__file__}/../..", exclude=["cdk.out"],
                 bundling=BundlingOptions(
                     image=_lambda.Runtime.PYTHON_3_11.bundling_image,
-                    command=["bash", "-c", "pip install -r requirements.txt -t /asset-output && cp lambda_fn.py /asset-output"],
+                    command=["bash", "-c", "pip install -r source/backend/requirements.txt -t /asset-output && cp source/backend/lambda_fn.py /asset-output"],
                 )
             ),
             runtime=_lambda.Runtime.PYTHON_3_11,
@@ -95,26 +94,12 @@ class LambdaStack(Stack):
             role=lambda_role
         )
 
-        # opts = _apigw.MethodOptions(authorization_type=_apigw.AuthorizationType.IAM)
-
-        # log_group = logs.LogGroup(self, "ApiLogs")
-
-        # api = _apigw.LambdaRestApi(self, "api",
-        #     handler=fn,
-        #     default_method_options=opts,
-        #     cloud_watch_role=True,
-        #     deploy_options=_apigw.StageOptions(access_log_destination=_apigw.LogGroupLogDestination(log_group))
-        # )
-
-        # CfnOutput(scope=self, id="ApiUrl", value=api.url)
-
-        
-
         ## base API for post requests from front end
         front_end_api = _apigw.RestApi(
             self, 'bedrock_lambda_api',
             rest_api_name='bedrock_lambda_api'
         )
+        CfnOutput(self, "ApiUrl", value=front_end_api.url)
 
         api_validator = _apigw.RequestValidator(
             self, "feValidator",
