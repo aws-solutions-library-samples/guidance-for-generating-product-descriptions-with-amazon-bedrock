@@ -1,25 +1,69 @@
-# Building Product Descriptions with AWS Bedrock and Rekognition
+# Generating Product Descriptions with Bedrock
 
-This solution contains a flask backend and ReactJS front-end application which creates product descriptions from images, images and product descriptions from text input, enhances and translates product descriptions using Amazon Web Services (AWS) new, managed LLM-provider service, Amazon Bedrock.
+This solution contains a serverless backend and ReactJS front-end application which creates product descriptions from images and text input, enhances and translates product descriptions using the new managed generative AI service, Amazon Bedrock.
+
+## Table of Contents
+
+1. [Overview](#overview)
+    - [Cost](#cost)
+2. [Prerequisites](#prerequisites)
+3. [Deployment Steps](#deployment-steps)
+4. [Deployment Validation](#deployment-validation)
+5. [Running the Guidance](#running-the-guidance)
+6. [Next Steps](#next-steps)
+7. [Cleanup](#cleanup)
+8. [Additional considerations and limitations](#additional-considerations-and-limitations)
+
+
+## Overview
+
+Retail businesses often have many thousands or millions of products, all of which require accurate and effective descriptions. Retailers often have existing metadata or images for these products that can be provided as inputs to generative AI models to greatly accelerate the process of creating product descriptions.
+
+![architecture diagram](assets/arch.png)
+
+1. The client sends a request including input data (either a product image or a basic product description to enhance) to the Amazon API Gateway REST API.
+2. Amazon API Gateway passes the request to AWS Lambda through a proxy integration.
+3. When operating on product image inputs, AWS Lambda calls Amazon Rekognition, which uses machine learning  to detect objects in the image. Descriptions of the objects detected can then be fed into subsequent steps to create a product description.
+4. AWS Lambda calls large language models (LLMs) hosted by Amazon Bedrock, such as the Amazon Titan language models, to produce product descriptions. The LLMs can either enhance existing basic text descriptions, or generate new descriptions based on the objects detected by Amazon Rekognition.
+5. AWS Lambda passes the response to Amazon API Gateway.
+6. Finally, Amazon API Gateway returns the HTTP response to the client.
+
+
+### Cost
+
+_You are responsible for the cost of the AWS services used while running this Guidance. As of November 2023, the cost for running this Guidance with the default settings in the US East (N. Virginia) is approximately $86 per month for processing 1000 products each month._
+
+This guidance includes the AWS services Rekognition, Bedrock, Cognito, Lambda, API Gateway and CloudWatch with costs as follow:
+
+- Rekognition: $0.001 per image (for the first million images)
+- Bedrock: Depends on the model. Claude Instant for example is $0.00163 per 1000 input tokens and $0.00551 per 1000 output tokens, and the AI21 Jurassic model is $0.0125 per 1000 input/output tokens
+- Cognito: Free for up to 50k users ($0.0055 per monthly active user thereafter)
+- API Gateway: $3.50 per million requests
+- Lambda: $0.0000166667 per GB second or $0.0005 per invocation for this guidance assuming a worst-case 30s duration
+- CloudWatch logs: $0.50 per GB collected, $0.03 per month per GB stored
+
+Conservatively (erring on the side of overestimating), using this solution to generate product descriptions based on input images 1000 times per month (including generating translations into Spanish, German, and French), and assuming a worst case of 30s per Lambda function invocation and 1000 input/output tokens for all calls to Claude Instant and Jurassic models, costs would be approximately as follows:
+
+- Rekognition: $0.001 per image * 1000 images = $1.00
+- Bedrock: $0.00163 + $0.00551 per call to Claude Instant * 1000 calls = $7.14 and $0.0125 * 2 per call to Jurassic * 1000 calls * 3 languages = $75
+- Cognito: Free
+- API Gateway: $3.50 per million invocations * 5000 total invocations = $0.0175
+- Lambda: $0.0005 per invocation * 5000 total invocations = $2.50
+- CloudWatch logs: Conservatively assume 1 GB collected, costing approximately $0.53 for the first month
+- TOTAL: $86 per month with 1000 uses per month (or only $11 per month if translations are disabled)
+
 
 ## Prerequisites
 
-You'll need to install all prerequisites on your local operating machine.
+You'll need to install all prerequisites on your local machine:
     
-For the Lambda backend, you'll need to have:
 1. [Python 3.8 or higher](https://www.python.org/downloads/macos/)
-2. Install the AWS CDK Toolkit (the `cdk` command) as documented [here](https://docs.aws.amazon.com/cdk/v2/guide/cli.html). You will also need to run `cdk bootstrap` if you haven't used the CDK before in your account as discussed [here](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
-3. The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-4. [Docker](https://www.docker.com/) is required to allow the CDK to package the Lambda code together with the necessary Python dependencies
-5. If you get a cdk nag error run this `pip3 install cdk-nag`
-
-For the React frontend, you'll need to install the following:
-1. [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
-2. Install the NPM dependencies with `npm install`
-
-Finally, in order to allow the frontend to authenticate to the backend:
-1. You will need [Docker](https://www.docker.com/) to run the [aws-sigv4-proxy](https://github.com/awslabs/aws-sigv4-proxy/tree/master).
-2. You will need to export AWS API authentication information via environment variables as documented [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) (other authentication methods will not be passed to the proxy)
+2. [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+3. Install the AWS CDK Toolkit (the `cdk` command) as documented [here](https://docs.aws.amazon.com/cdk/v2/guide/cli.html). You will also need to run `cdk bootstrap` if you haven't used the CDK before in your account as discussed [here](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
+4. The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+5. [Docker](https://www.docker.com/) is required to allow the CDK to package the Lambda code together with the necessary Python dependencies
+6. The project should work in any macOS, Linux, or Windows environment with the above prerequisites, but the project has been tested in macOS and Linux. Some commands and utility scripts assume a Bash shell environment.
+7. The Claude Instant, Stable Diffusion SDXL0.8, and AI21 Jurassic-2 Mid must be enabled in Bedrock as documented [here](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
 **NOTE:** Docker must be installed and _running_. You can ensure that the Docker daemon is running by ensuring that a command like `docker ps` runs without error. If no containers are running, then `docker ps` should return an empty list of containers like this:
 
@@ -27,47 +71,47 @@ Finally, in order to allow the frontend to authenticate to the backend:
 CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 ```
 
-## IAM Permission
+## Deployment Steps
 
-The CDK and CloudFormation will provision an IAM user with the credentials necessary to invoke Amazon Rekognition and Amazon Bedrock from Lambda. You will be asked to confirm creation of this role when running `cdk deploy`.
+1. Clone the repo: `git clone https://github.com/aws-solutions-library-samples/guidance-for-generating-product-descriptions-with-bedrock.git`
+2. cd to the repo folder: `cd guidance-for-generating-product-descriptions-with-bedrock`
+3. (Optional) create a new Python virtualenv for project-specific dependencies: `python -m venv .env && source .env/bin/activate`
+3. Install CDK dependencies: `pip install -r source/backend/requirements.txt`
+4. Deploy the backend: `cd source/backend && cdk deploy`
+5. cd back to the project root: `cd ../..`
+6. Create an initial Cognito user: `deployment/create-user.sh <<your email address>>`
+7. Update `config.js` with the appropriate values from CDK stack outputs. This can be done automatically by running `deployment/update-config.sh`
+8. Install frontend dependencies: `cd ../frontend && npm install`
+9. Run the sample client app: `npm start`
 
-## How to Run
+## Deployment Validation
 
-1. First, deploy the AWS infrastructure by running `cd backend && cdk deploy`
-2. Next, register to the Cognito User Pool. The user-pool-id will have outputted from the CDK execution. Modify the following code snippet to use the user_pool_id and your email.
+The deployment should be successful if all of the above commands complete without error. You can browse the backend resources created by navigating to the CloudFormation service in the AWS Console, finding the stack named `LambdaStack`, and browsing its resources.
 
+## Running the Guidance
+
+You can try the demo web app by following these steps:
+1. Check your email for a temporary password
+2. Access the app in a browser at localhost:3000
+3. Follow the prompts to log in and change your password
+4. To create a product description from an image (the default mode), browse for an image file for some product or object
+5. Once uploaded, a product description and translations into several languages will be generated
+
+## Next Steps
+
+See the Bedrock [product page](https://aws.amazon.com/bedrock/) for more resources on using Amazon Bedrock.
+
+
+## Cleanup
+
+The provisioned infrastructure can be deleted by running the following command:
 ```
-aws cognito-idp admin-create-user \
-    --user-pool-id <<user_pool_uid>> \
-    --username <<email_address>> \
-    --user-attributes Name="email",Value="<<email_address>>" Name="family_name",Value="Foobar" \
-    --region us-west-2
+cd deployment && cdk destroy
 ```
 
-3. You'll receive a temporary password in your email shortly. You'll need to use that to sign into the application for the first time, after which you'll be asked to change your password.
- 
-4. Configure the front end application with the outputs from the CDK execution. In `./src/config.js`, replace each value with those printed as outputs from CDK.
-   
-```
-Fill these out using exports from CDK exeuction
-export const AWS_REGION = ''
-export const USER_POOL_ID = ''
-export const USER_POOL_WEB_CLIENT_ID = ''
-export const API_GATEWAY_URL = ''
-```
 
-5. In another terminal session, run `npm start`
-6. When finished, you can clean up AWS resources by running `cd backend && cdk destroy`
+**Additional considerations and limitations**
 
-## Costs for running the sample code
+- Because this project passes base64-encoded images into Lambda functions through the event payload, the total input size is limited to 6 MB, which limits the size of input images.
+- The Lambda and API Gateway proxy integration limits processing time to 29 seconds per call, which could prevent larger product descriptions from being generated. This limitation could be overcome using alternative approaches, such as streaming responses via Lambda function URLs instead of API Gateway.
 
-Note that this sample project will incur costs in your AWS account, including:
-
-- Data transfer costs
-- API Gateway API Calls
-- Lambda function invocation
-- CloudWatch log collection and storage
-- Amazon Rekognition usage
-- Amazon Bedrock usage
-
-All resources provisioned by the solution can be deleted from your account by running `cdk destroy` with the exception of CloudWatch logs. Logs can be found by searching CloudWatch log groups for the CDK stack name (`LambdaStack` by default) and deleting the groups.
