@@ -7,5 +7,6 @@ from infra import LambdaStack
 
 
 app = cdk.App()
-LambdaStack(app, "LambdaStack")
+LambdaStack(app, "LambdaStack",
+            description="Generating Product Descriptions with Bedrock (SO9325)")
 app.synth()
