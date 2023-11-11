@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@aws-amplify/ui-react": "^4.3.7",
-    "aws-amplify": "^5.0.14",
+    "aws-amplify": "^5.3.12",
     "cdk": "^2.104.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
