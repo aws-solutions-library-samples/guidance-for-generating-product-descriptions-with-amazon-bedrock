@@ -75,7 +75,7 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 
 1. Create an [EC2 environment in AWS Cloud9](https://docs.aws.amazon.com/cloud9/latest/user-guide/create-environment-main.html), launch the EC2 instance into a public subnet, and write down its Public IPv4 address (#cloud9_ec2_ip).
   
-2. [Resize the EBS volume](https://docs.aws.amazon.com/cloud9/latest/user-guide/move-environment.html#move-environment-resize) that the environment (created in Step 1) uses to at least 20GB. It comes with 10GB by default.
+2. [Resize the EBS volume](https://docs.aws.amazon.com/cloud9/latest/user-guide/move-environment.html#move-environment-resize) that the environment (created in Step 1) uses to at least 20GB. It comes with 10GB for t2.micro by default.
    
 3. Clone the repo:
    ```
