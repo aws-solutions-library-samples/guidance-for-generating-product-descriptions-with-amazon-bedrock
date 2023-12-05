@@ -73,11 +73,15 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 
 ## Deployment Steps
 
-1. Clone the repo:
+1. Create an [EC2 environment in AWS Cloud9](https://docs.aws.amazon.com/cloud9/latest/user-guide/create-environment-main.html), launch the EC2 instance into a public subnet, and write down its Public IPv4 address (#cloud9_ec2_ip).
+  
+2. [Resize the EBS volume](https://docs.aws.amazon.com/cloud9/latest/user-guide/move-environment.html#move-environment-resize) that the environment (created in Step 1) uses to at least 20GB. It comes with 10GB for t2.micro by default.
+   
+3. Clone the repo:
    ```
    git clone https://github.com/aws-solutions-library-samples/guidance-for-generating-product-descriptions-with-bedrock.git
    ```
-3. cd to the repo folder:
+4. cd to the repo folder:
    ```
    cd guidance-for-generating-product-descriptions-with-bedrock
    ```
@@ -85,23 +89,27 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
    ```
    python -m venv .env && source .env/bin/activate
    ```
-3. Install CDK dependencies:
+6. Install CDK dependencies:
    ```
    pip install -r deployment/requirements.txt
    ```
-5. Deploy the backend:
+7. [Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) for AWS CDK, if it has not been done previously:
+   ```
+   cd deployment && cdk bootstrap
+   ```
+8. Deploy the backend:
    ```
    cd deployment && cdk deploy
    ```
-7. cd back to the project root:
+9. cd back to the project root:
    ```
    cd ..
    ```
-9. Create an initial Cognito user:
-   ```
-   deployment/create-user.sh <<your email address>>
-   ```
-10. Update `config.js` with the appropriate values from CDK stack outputs. This can be done automatically by running
+10. Create an initial Cognito user:
+    ```
+    deployment/create-user.sh <<your email address>>
+    ```
+11. Update `config.js` with the appropriate values from CDK stack outputs. This can be done automatically by running
     ```
     deployment/update-config.sh
     ```
@@ -109,10 +117,12 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
     ```
     cd source/frontend && npm install
     ```
-14. Run the sample client app:
+13. Run the sample client app, and write down the port number (#web_port) that the webpack listens to, ex. 8080.
     ```
     npm start
     ```
+14. Open the Security Groups of the EC2 created in Step 1, add an inbound rule, which allows Custom TCP, Port range #web_port, Source “My IP”, then Save rules.
+
 
 ## Deployment Validation
 
@@ -122,7 +132,7 @@ The deployment should be successful if all of the above commands complete withou
 
 You can try the demo web app by following these steps:
 1. Check your email for a temporary password
-2. Access the app in a browser at localhost:3000
+2. Access the app from a local browser at #cloud9_public_ip:#web_port
 3. Follow the prompts to log in and change your password
 4. To create a product description from an image (the default mode), browse for an image file for some product or object
 5. Once uploaded, a product description and translations into several languages will be generated
